@@ -8,6 +8,7 @@ Purpose: Implement Convolutional VAE for MNIST dataset to demonstrate NNClasses 
 """
 
 import sys
+
 sys.path.append('../')
 
 from TensorBase.tensorbase.base import Model
@@ -16,8 +17,7 @@ from TensorBase.tensorbase.data import Mnist
 
 import tensorflow as tf
 import numpy as np
-import scipy.misc
-
+from scipy import misc
 
 # Global Dictionary of Flags
 flags = {
@@ -100,9 +100,10 @@ class ConvVae(Model):
 
     def _optimizer(self):
         epsilon = 1e-8
-        const = 1/(self.flags['batch_size'] * self.flags['image_dim'] * self.flags['image_dim'])
+        const = 1 / (self.flags['batch_size'] * self.flags['image_dim'] * self.flags['image_dim'])
         self.recon = const * tf.reduce_sum(tf.squared_difference(self.x, self.x_hat))
-        self.vae = const * -0.5 * tf.reduce_sum(1.0 - tf.square(self.mean) - tf.square(self.stddev) + 2.0 * tf.log(self.stddev + epsilon))
+        self.vae = const * -0.5 * tf.reduce_sum(
+            1.0 - tf.square(self.mean) - tf.square(self.stddev) + 2.0 * tf.log(self.stddev + epsilon))
         self.weight = self.flags['weight_decay'] * tf.add_n(tf.get_collection('weight_losses'))
         self.cost = tf.reduce_sum(self.vae + self.recon + self.weight)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.cost)
@@ -113,21 +114,23 @@ class ConvVae(Model):
 
     def _run_train_iter(self):
         self.summary, _ = self.sess.run([self.merged, self.optimizer],
-                                   feed_dict={self.x: self.train_batch_x, self.epsilon: self.norm,
-                                              self.lr: self.learn_rate * self.flags['lr_decay']})
+                                        feed_dict={self.x: self.train_batch_x, self.epsilon: self.norm,
+                                                   self.lr: self.learn_rate * self.flags['lr_decay']})
+        # TODO in the future use lr_decay
+        # self.learn_rate = self.learn_rate * self.flags['lr_decay']}
 
     def _run_train_summary_iter(self):
         norm = np.random.standard_normal([self.flags['batch_size'], self.flags['hidden_size']])
-        self.summary, self.loss, self.x_recon, _ =\
+        self.summary, self.loss, self.x_recon, _ = \
             self.sess.run([self.merged, self.cost, self.x_hat, self.optimizer],
-                          feed_dict={self.x: self.train_batch_x, self.epsilon: norm,self.lr: 0.01})
+                          feed_dict={self.x: self.train_batch_x, self.epsilon: norm, self.lr: 0.01})
 
     def _record_train_metrics(self):
         for j in range(1):
-            scipy.misc.imsave(self.flags['restore_directory'] + 'x_' + str(self.step) + '.png',
-                              np.squeeze(self.train_batch_x[j]))
-            scipy.misc.imsave(self.flags['restore_directory'] + 'x_recon_' + str(self.step) + '.png',
-                              np.squeeze(self.x_recon[j]))
+            misc.imsave(self.flags['restore_directory'] + 'x_' + str(self.step) + '.png',
+                        np.squeeze(self.train_batch_x[j]))
+            misc.imsave(self.flags['restore_directory'] + 'x_recon_' + str(self.step) + '.png',
+                        np.squeeze(self.x_recon[j]))
         self.print_log("Batch Number: " + str(self.step) + ", Image Loss= " + "{:.6f}".format(self.loss))
 
 
@@ -135,6 +138,7 @@ def main():
     flags['seed'] = np.random.randint(1, 1000, 1)[0]
     model_vae = ConvVae(flags, run_num=2)
     model_vae.train()
+
 
 if __name__ == "__main__":
     main()
